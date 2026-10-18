@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "Kick Çeviri": {
+      "commandName": "Project",
+      "commandLineArgs": "--setup",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

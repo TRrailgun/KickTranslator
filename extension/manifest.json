@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "Kick Çeviri",
+  "description": "Kick yayınlarına ve yayın tekrarlarına anlık Türkçe ⇄ İngilizce altyazı ekler. Kick Çeviri uygulamasıyla çalışır.",
+  "version": "1.0.0",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": ["webRequest", "storage"],
+  "host_permissions": [
+    "https://kick.com/*",
+    "https://*.kick.com/*",
+    "https://*.cloudfront.net/*",
+    "https://*.live-video.net/*",
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://kick.com/*"],
+      "js": ["content.js"],
+      "css": ["overlay.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["pcm-worklet.js"],
+      "matches": ["https://kick.com/*"]
+    }
+  ],
+  "action": {
+    "default_title": "Kick Çeviri",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  }
+}

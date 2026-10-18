@@ -1,0 +1,37 @@
+name: Hata bildirimi
+description: Bir şey çalışmıyor
+labels: ["hata"]
+body:
+  - type: textarea
+    id: ne-oldu
+    attributes:
+      label: Ne oldu?
+      description: Ne yaptınız, ne bekliyordunuz, ne oldu?
+    validations:
+      required: true
+  - type: dropdown
+    id: tur
+    attributes:
+      label: Yayın türü
+      options: ["Canlı yayın", "Yayın tekrarı (VOD)", "İkisi de"]
+  - type: dropdown
+    id: yon
+    attributes:
+      label: Çeviri yönü
+      options: ["EN → TR", "TR → EN"]
+  - type: input
+    id: donanim
+    attributes:
+      label: Ekran kartı / işlemci
+      placeholder: "ör. RTX 3060 veya Ryzen 5 5600G (APU)"
+  - type: input
+    id: surum
+    attributes:
+      label: Uygulama sürümü
+      description: Saatin yanındaki simgeye sağ tıklayınca en üstte yazar.
+  - type: textarea
+    id: gunluk
+    attributes:
+      label: Günlük
+      description: Simge menüsü → "Günlük klasörünü aç" → bugünün dosyasındaki son 30 satır
+      render: text

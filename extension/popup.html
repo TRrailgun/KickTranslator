@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    :root { --bg:#111214; --card:#1a1c1f; --line:#2a2d31; --text:#eceeef; --muted:#9aa1a7; --green:#53fc18; --red:#ff6b6b; }
+    * { box-sizing: border-box; }
+    body { width: 300px; margin: 0; padding: 14px; font: 13px/1.45 "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+    h1 { font-size: 15px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+    h1 img { width: 20px; height: 20px; border-radius: 4px; }
+    h1 b { color: var(--green); }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+    label.row { display: flex; align-items: center; justify-content: space-between; margin: 6px 0; gap: 8px; }
+    .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: #0d0e10; border-radius: 8px; padding: 3px; margin-bottom: 6px; }
+    .seg button { background: transparent; color: var(--muted); border: 0; border-radius: 6px; padding: 6px; font: inherit; font-weight: 600; cursor: pointer; }
+    .seg button.on { background: var(--green); color: #000; }
+    input[type="number"], input[type="email"], input[type="text"] { background: #0d0e10; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit; }
+    input[type="number"] { width: 64px; }
+    input[type="range"] { width: 120px; accent-color: var(--green); }
+    input[type="checkbox"] { accent-color: var(--green); width: 16px; height: 16px; }
+    .btn { background: var(--green); color: #000; border: 0; border-radius: 6px; padding: 7px 12px; font: inherit; font-weight: 600; cursor: pointer; }
+    .btn.ghost { background: #26292d; color: var(--text); }
+    .btn:disabled { opacity: .5; cursor: default; }
+    .flex { display: flex; gap: 6px; align-items: center; }
+    .flex input { flex: 1; min-width: 0; }
+    .ok { color: var(--green); } .bad { color: var(--red); } .muted { color: var(--muted); }
+    .small { font-size: 11px; }
+    .msg { min-height: 16px; margin-top: 6px; font-size: 12px; }
+    .title { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 6px; }
+  </style>
+</head>
+<body>
+  <h1><img src="icons/icon32.png" alt="" /><span><b>Kick</b> Çeviri</span></h1>
+
+  <div class="card">
+    <p class="title">Çeviri yönü</p>
+    <div class="seg" id="direction">
+      <button data-v="en-tr">EN → TR</button>
+      <button data-v="tr-en">TR → EN</button>
+    </div>
+    <label class="row">Altyazı açık <input type="checkbox" id="enabled" /></label>
+    <label class="row">Orijinal metni de göster <input type="checkbox" id="showOriginal" /></label>
+    <label class="row">Yazı boyutu <input type="range" id="fontSize" min="16" max="44" step="1" /></label>
+    <label class="row">Gecikme (sn, tekrarlarda) <input type="number" id="offset" step="0.1" /></label>
+  </div>
+
+  <div class="card">
+    <p class="title">Uygulama</p>
+    <div id="status"><span class="muted">Kontrol ediliyor...</span></div>
+  </div>
+
+  <div class="muted small">Videodayken <b>Alt+T</b> altyazıyı açar/kapatır.</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+Kick Çeviri — Üçüncü taraf bileşenler ve lisansları
+=====================================================
+
+Konuşma tanıma modeli: OpenAI Whisper (MIT Lisansı)
+  https://github.com/openai/whisper
+  GGML biçimi: whisper.cpp, Georgi Gerganov ve katkıcılar (MIT Lisansı)
+
+Whisper.net — Sandro Hanea (MIT Lisansı)
+  https://github.com/sandrohanea/whisper.net
+
+Çeviri modelleri: Helsinki-NLP OPUS-MT (CC-BY 4.0)
+  opus-mt-tc-big-en-tr, opus-mt-tc-big-tr-en
+  Tiedemann, J. & Thottingal, S. (2020). OPUS-MT — Building open translation services for the World.
+  https://huggingface.co/Helsinki-NLP
+  Modeller int8 sıkıştırılmış ve ONNX biçimine dönüştürülmüştür.
+
+ONNX Runtime — Microsoft (MIT Lisansı)
+Microsoft.ML.Tokenizers — Microsoft (MIT Lisansı)
+.NET — Microsoft (MIT Lisansı)
+
+FFmpeg (LGPL v2.1 veya sonrası, LGPL derlemesi)
+  https://ffmpeg.org — ayrıntılar: licenses\LICENSE-ffmpeg.txt
+  Derleme kaynağı: https://github.com/BtbN/FFmpeg-Builds

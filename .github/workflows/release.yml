@@ -1,0 +1,67 @@
+# Yeni sürüm: "v1.0.0" gibi bir etiket (tag) gönderildiğinde kurulum dosyasını derler
+# ve GitHub Releases sayfasında yeni bir sürüm olarak yayınlar.
+#
+#   git tag v1.0.0
+#   git push origin v1.0.0
+#
+# Actions sekmesinden "Run workflow" ile elle çalıştırılırsa sadece derler,
+# kurulum dosyasını indirilebilir bir "artifact" olarak bırakır (deneme amaçlı).
+
+name: Sürüm derle
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Inno Setup kur
+        run: choco install innosetup --no-progress -y
+
+      - name: Sürüm numarası
+        id: ver
+        shell: pwsh
+        run: |
+          $v = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}".TrimStart("v") } else { "0.0.0-test" }
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Derle
+        shell: pwsh
+        run: ./build.ps1 -Version "${{ steps.ver.outputs.version }}"
+
+      - name: Deneme derlemesini sakla
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: KickCeviri-Setup
+          path: dist/KickCeviri-Setup-*.exe
+
+      - name: GitHub sürümü oluştur
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Kick Çeviri ${{ steps.ver.outputs.version }}
+          files: dist/KickCeviri-Setup-*.exe
+          generate_release_notes: true
+          body: |
+            ## Kurulum
+            1. Aşağıdaki **KickCeviri-Setup-${{ steps.ver.outputs.version }}.exe** dosyasını indirip çalıştırın.
+               Windows "bilgisayarınız korundu" derse **Ek bilgi → Yine de çalıştır**'a basın.
+            2. Açılan sayfadaki adımlarla tarayıcı eklentisini ekleyin.
+            3. Kick'te bir yayın açın.
+
+            Güncelliyorsanız: yeni kurulumu eskisinin üstüne kurun, sonra `chrome://extensions` sayfasında Kick Çeviri'nin ↻ simgesine basın.
