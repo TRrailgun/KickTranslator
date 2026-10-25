@@ -43,18 +43,45 @@ public sealed class LlamaServerHost : IDisposable
 
     public bool IsReady => State == LlmState.Ready;
 
-    /// <summary>Sunucuyu (gerekirse indirip) başlatır. Aynı anda gelen istekler tek başlatmada birleşir.</summary>
-    public Task<bool> EnsureStartedAsync()
+    private string ModelName => Path.GetFileName(new Uri(_opts.LlmModelUrl).AbsolutePath);
+
+    /// <summary>Sunucu ve model diskte var mı (kullanıcı daha önce indirmiş mi).</summary>
+    public bool IsInstalled => _models.HasFile(ModelName) && _models.HasDir("llama-server", "llama-server.exe");
+
+    /// <summary>
+    /// Sunucuyu başlatır. <paramref name="allowDownload"/> false ise (çeviri oturumları) sadece daha önce
+    /// indirilmişse başlatır; ~2.5 GB'lık model kullanıcı eklentiden "İndir" demeden inmez.
+    /// Aynı anda gelen istekler tek başlatmada birleşir.
+    /// </summary>
+    public Task<bool> EnsureStartedAsync(bool allowDownload = false)
     {
         lock (_gate)
         {
+            if (!allowDownload && !IsInstalled && State != LlmState.Ready) return Task.FromResult(false);
             if (_start == null || (_start.IsCompleted && !_start.Result))
             {
-                // Başarısız denemeden sonra en fazla 2 dakikada bir yeniden dene
-                if (_start != null && DateTime.UtcNow - _failedAt < TimeSpan.FromMinutes(2)) return _start;
+                // Başarısız denemeden sonra en fazla 2 dakikada bir kendiliğinden yeniden dene (kullanıcı isterse hemen)
+                if (!allowDownload && _start != null && DateTime.UtcNow - _failedAt < TimeSpan.FromMinutes(2)) return _start;
                 _start = Task.Run(StartAsync);
             }
             return _start;
+        }
+    }
+
+    /// <summary>Sunucuyu durdurur ve modeli diskten siler (eklentideki "Kaldır").</summary>
+    public void Remove()
+    {
+        lock (_gate)
+        {
+            if (State is LlmState.Downloading or LlmState.Starting)
+                throw new InvalidOperationException("İndirme ya da başlatma sürerken kaldırılamaz.");
+            KillProcess();
+            _start = null;
+            State = LlmState.NotStarted;
+            Error = null;
+            _models.DeleteFile(ModelName);
+            _models.DeleteDir("llama-server");
+            _log.LogInformation("Kaliteli çeviri modeli kaldırıldı.");
         }
     }
 
@@ -67,7 +94,7 @@ public sealed class LlamaServerHost : IDisposable
             State = LlmState.Downloading;
             var serverDir = await _models.EnsureZipAsync(_opts.LlmServerUrl, "llama-server", "llama-server.exe",
                 "Kaliteli çeviri sunucusu", _opts.LlmServerSha256, CancellationToken.None);
-            var modelName = Path.GetFileName(new Uri(_opts.LlmModelUrl).AbsolutePath);
+            var modelName = ModelName;
             var model = await _models.EnsureFileAsync(_opts.LlmModelUrl, modelName,
                 "Kaliteli çeviri modeli", _opts.LlmModelSha256, CancellationToken.None);
 

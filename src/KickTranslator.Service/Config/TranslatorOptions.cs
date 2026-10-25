@@ -80,13 +80,47 @@ public sealed class TranslatorOptions
     }
 }
 
-/// <summary>Desteklenen çeviri yönleri.</summary>
+/// <summary>Desteklenen çeviri yönleri ve her yönün kullandığı OPUS-MT modelleri.</summary>
 public static class Directions
 {
     public const string EnTr = "en-tr";
     public const string TrEn = "tr-en";
+    public const string JaTr = "ja-tr";
+    public const string TrJa = "tr-ja";
 
-    public static string Normalize(string? d) => d == TrEn ? TrEn : EnTr;
+    public static readonly string[] All = { EnTr, TrEn, JaTr, TrJa };
+
+    public static string Normalize(string? d) => All.Contains(d) ? d! : EnTr;
     public static string Source(string d) => Normalize(d)[..2];
     public static string Target(string d) => Normalize(d)[3..];
+
+    /// <summary>Japonca yönleri isteğe bağlı paketle gelir, kullanıcı indirmeden kullanılamaz.</summary>
+    public static bool NeedsJapanesePack(string d) => d is JaTr or TrJa;
+
+    /// <summary>
+    /// Yönün çeviri zinciri (opus-mt-{ad} klasörleri). Türkçe→Japonca için doğrudan model olmadığından
+    /// İngilizce üzerinden iki adımda çevrilir.
+    /// </summary>
+    public static string[] ModelChain(string d) => Normalize(d) switch
+    {
+        TrEn => new[] { "tr-en" },
+        JaTr => new[] { "ja-tr" },
+        TrJa => new[] { "tr-en", "en-ja" },
+        _ => new[] { "en-tr" },
+    };
+
+    /// <summary>Japonca paketinin indirdiği çeviri modelleri.</summary>
+    public static readonly string[] JapanesePackModels = { "ja-tr", "tr-en", "en-ja" };
+
+    /// <summary>Uygulamanın tanıdığı tüm çeviri modelleri (güncelleme denetimi için).</summary>
+    public static readonly string[] AllModels = { "en-tr", "tr-en", "ja-tr", "en-ja" };
+
+    public static string Label(string d) => Normalize(d).ToUpperInvariant().Replace("-", "→");
+
+    public static string LanguageName(string code) => code switch
+    {
+        "tr" => "Turkish",
+        "ja" => "Japanese",
+        _ => "English",
+    };
 }

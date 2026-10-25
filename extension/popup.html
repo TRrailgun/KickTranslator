@@ -13,6 +13,12 @@
     label.row { display: flex; align-items: center; justify-content: space-between; margin: 6px 0; gap: 8px; }
     .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: #0d0e10; border-radius: 8px; padding: 3px; margin-bottom: 6px; }
     .seg button { background: transparent; color: var(--muted); border: 0; border-radius: 6px; padding: 6px; font: inherit; font-weight: 600; cursor: pointer; }
+    .select { width: 100%; margin-bottom: 6px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line);
+              background: #0d0e10; color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
+    .select:focus { outline: 2px solid var(--green); outline-offset: 1px; }
+    .pack { font-size: 12px; margin: 2px 0 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .pack:empty { display: none; }
+    .pack .btn { padding: 4px 10px; font-size: 12px; }
     .seg.seg3 { grid-template-columns: 1fr 1fr 1fr; }
     .seg button.on { background: var(--green); color: #000; }
     input[type="number"], input[type="email"], input[type="text"] { background: #0d0e10; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit; }
@@ -35,16 +41,20 @@
 
   <div class="card">
     <p class="title">Çeviri yönü</p>
-    <div class="seg" id="direction">
-      <button data-v="en-tr">EN → TR</button>
-      <button data-v="tr-en">TR → EN</button>
-    </div>
+    <select id="direction" class="select" aria-label="Çeviri yönü">
+      <option value="en-tr">İngilizce → Türkçe</option>
+      <option value="tr-en">Türkçe → İngilizce</option>
+      <option value="ja-tr">Japonca → Türkçe</option>
+      <option value="tr-ja">Türkçe → Japonca</option>
+    </select>
+    <div id="jaPack" class="pack"></div>
     <p class="title" style="margin-top:10px">Çeviri kalitesi</p>
     <div class="seg seg3" id="engine">
       <button data-v="auto" title="Güçlü ekran kartında kaliteli, diğerlerinde hızlı">Otomatik</button>
       <button data-v="opus" title="Küçük çeviri modeli: her bilgisayarda hızlı">Hızlı</button>
       <button data-v="llm" title="Yapay zekâ dil modeli: daha doğal çeviri, güçlü ekran kartı ister (~2.5 GB indirme)">Kaliteli</button>
     </div>
+    <div id="llmPack" class="pack"></div>
     <p class="title" style="margin-top:10px">Canlı yayın gecikmesi</p>
     <div class="seg" id="latency">
       <button data-v="normal" title="Cümle bitince çevirir: daha doğru">Normal</button>

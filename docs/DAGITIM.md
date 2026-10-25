@@ -43,14 +43,14 @@ cd <proje klasörü>
 powershell -ExecutionPolicy Bypass -File tools\build-models.ps1
 ```
 
-Sonunda `dist\models` klasöründe 3 dosya olur: `opus-mt-en-tr.zip`, `opus-mt-tr-en.zip`, `models.json`.
+Sonunda `dist\models` klasöründe 5 dosya olur: `opus-mt-en-tr.zip`, `opus-mt-tr-en.zip`, `opus-mt-ja-tr.zip`, `opus-mt-en-ja.zip` (Japonca paketi), `models.json`.
 
 **b) GitHub'a yükleyin:**
 1. Depo sayfasında sağdaki **Releases → Create a new release** (veya *Draft a new release*) bağlantısına tıklayın.
 2. **Choose a tag** kutusuna `modeller-v1` yazın ve **Create new tag** seçin.
 3. Başlık: `Çeviri modelleri v1`
 4. Açıklama: `Uygulamanın otomatik indirdiği çeviri modelleri. Elle indirmenize gerek yok.`
-5. 3 dosyayı **Attach binaries** alanına sürükleyin.
+5. Tüm dosyaları **Attach binaries** alanına sürükleyin.
 6. **Set as a pre-release** kutusunu **işaretleyin.** Bu önemli: işaretlemezseniz "Son sürümü indir" bağlantısı kurulum dosyası yerine bu modellere gider.
 7. **Publish release**.
 
@@ -144,7 +144,7 @@ Bu bağlantı her zaman en son sürüme gider. Depo ana sayfası (README) zaten 
 
 **Eklenti dosyaları değiştiyse** sürüm notuna şunu ekleyin: *"Güncelledikten sonra `chrome://extensions` sayfasında Kick Çeviri'nin ↻ simgesine basın."* Kurulum dosyaları yeniler, ama Chrome eklentiyi kendiliğinden yeniden yüklemez.
 
-**Modelleri değiştirirseniz:** Yeni bir `modeller-v2` sürümü açın (yine pre-release olarak), yeni 3 dosyayı yükleyin ve `appsettings.json` içindeki adresi `modeller-v2` yapın. `modeller-v1`'i silmeyin, eski sürümü kullananlar hâlâ ona ihtiyaç duyar. Yeni sürümü kuran kullanıcıların uygulaması, `models.json` içindeki sha256 değişmişse yeni modeli arka planda kendiliğinden indirir ve bir sonraki açılışta kullanır.
+**Modelleri değiştirirseniz:** Yeni bir `modeller-v2` sürümü açın (yine pre-release olarak), yeni dosyaların hepsini yükleyin ve `appsettings.json` içindeki adresi `modeller-v2` yapın. `modeller-v1`'i silmeyin, eski sürümü kullananlar hâlâ ona ihtiyaç duyar. Yeni sürümü kuran kullanıcıların uygulaması, `models.json` içindeki sha256 değişmişse yeni modeli arka planda kendiliğinden indirir ve bir sonraki açılışta kullanır.
 
 **Disk temizliği:** Uygulama her açılışta kullanılmayan dosyaları kendiliğinden siler: yarım kalmış indirmeler, artık kullanılmayan konuşma tanıma modelleri (ör. donanım değiştiyse), eski LLM modeli ve sunucu sürümleri. Ek bir şey yapmanız gerekmez.
 

@@ -7,6 +7,7 @@ using KickTranslator.Live;
 using KickTranslator.Llm;
 using KickTranslator.Logging;
 using KickTranslator.Models;
+using KickTranslator.Packs;
 using KickTranslator.Translation;
 using KickTranslator.Tray;
 using KickTranslator.Web;
@@ -57,6 +58,7 @@ internal static class Program
         builder.Services.AddSingleton<TranslatorRegistry>();
         builder.Services.AddSingleton<SileroVad>();
         builder.Services.AddSingleton<LlamaServerHost>();
+        builder.Services.AddSingleton<LanguagePacks>();
         builder.Services.AddHostedService<Warmup>();
 
         builder.WebHost.UseUrls(opts.Listen);

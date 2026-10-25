@@ -59,10 +59,48 @@ public sealed class ModelDownloader
         });
     }
 
-    /// <summary>Çeviri modeli klasörünü getirir (gerekirse zip indirip açar).</summary>
-    public Task<string> EnsureMarianAsync(string direction, CancellationToken ct)
+    public bool HasWhisper(string fileName) => File.Exists(Path.Combine(_opts.ModelsDir, fileName));
+    public bool HasFile(string fileName) => File.Exists(Path.Combine(_opts.ModelsDir, fileName));
+
+    public bool HasDir(string dirName, string marker)
     {
-        var name = $"opus-mt-{direction}";
+        var dir = Path.Combine(_opts.ModelsDir, dirName);
+        return Directory.Exists(dir) && Directory.EnumerateFiles(dir, marker, SearchOption.AllDirectories).Any();
+    }
+
+    public void DeleteFile(string fileName)
+    {
+        var p = Path.Combine(_opts.ModelsDir, fileName);
+        foreach (var f in new[] { p, p + ".sha256", p + ".part" })
+            if (File.Exists(f)) File.Delete(f);
+    }
+
+    public void DeleteDir(string dirName)
+    {
+        var d = Path.Combine(_opts.ModelsDir, dirName);
+        if (Directory.Exists(d)) Directory.Delete(d, true);
+    }
+
+    /// <summary>Model klasörü tam mı (indirme yapmadan).</summary>
+    public bool HasMarian(string model)
+    {
+        var dir = Path.Combine(_opts.ModelsDir, $"opus-mt-{model}");
+        ApplyPendingUpdate(dir);
+        return MarianFiles.All(f => File.Exists(Path.Combine(dir, f)));
+    }
+
+    /// <summary>Model klasörünü siler (Japonca paketi kaldırılırken).</summary>
+    public void DeleteMarian(string model)
+    {
+        var dir = Path.Combine(_opts.ModelsDir, $"opus-mt-{model}");
+        foreach (var d in new[] { dir, dir + ".new" })
+            if (Directory.Exists(d)) Directory.Delete(d, true);
+    }
+
+    /// <summary>Çeviri modeli klasörünü getirir (gerekirse zip indirip açar).</summary>
+    public Task<string> EnsureMarianAsync(string model, CancellationToken ct)
+    {
+        var name = $"opus-mt-{model}";
         var dir = Path.Combine(_opts.ModelsDir, name);
         ApplyPendingUpdate(dir);
         if (MarianFiles.All(f => File.Exists(Path.Combine(dir, f)))) return Task.FromResult(dir);
@@ -240,9 +278,9 @@ public sealed class ModelDownloader
 
         using (manifest)
         {
-            foreach (var direction in new[] { Directions.EnTr, Directions.TrEn })
+            foreach (var model in Directions.AllModels)
             {
-                var name = $"opus-mt-{direction}";
+                var name = $"opus-mt-{model}";
                 var dir = Path.Combine(_opts.ModelsDir, name);
                 if (!Directory.Exists(dir)) continue; // hiç kullanılmamış yön: ilk kullanımda zaten güncel iner
                 if (!manifest.RootElement.TryGetProperty(name + ".zip", out var m) ||

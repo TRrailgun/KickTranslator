@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Kick Çeviri",
   "description": "Kick yayınlarına ve yayın tekrarlarına anlık Türkçe ⇄ İngilizce altyazı ekler. Kick Çeviri uygulamasıyla çalışır.",
-  "version": "1.5.0",
+  "version": "1.7.0",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx01rnteW7xRiDSOTVng5KxSQp/mbgylGreBE+Idf9Z4ddejLSEXG44UYiqGrQovjpQZEWsadHQYvlqLlrdGOiNN04u+DjMFYhVpbEMtomrMEfY3NOYJWi3rgHkkWxqtdddaqie3A4HMnUQjTnfm5zjiKChfrPrctEsYAS8pRdvCRdWKQTOhY3BXKe1UU9AqcvZONaVHPiDdhFBZqUwczjydB2uTOdjFab8JyZd7S0ExzWSyORgrSV8q36eCCF7DZdvO7vTU8321qYLpRXNTPrx1vKGF2N47fVhCQ0nJhtJpyPtUpA1Kuj740KKqNY52Fmjq3yGU4oXvgqWqSX8JHSwIDAQAB",
   "icons": {
     "16": "icons/icon16.png",

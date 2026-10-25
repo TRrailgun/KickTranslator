@@ -11,16 +11,16 @@ namespace KickTranslator.Llm;
 /// </summary>
 public sealed class LlmTranslator(LlamaServerHost host, string direction) : ISubtitleTranslator
 {
-    private static readonly Regex Prefix = new(@"^(translation|çeviri|turkish|english|türkçe|ingilizce)\s*:\s*",
+    private static readonly Regex Prefix = new(@"^(translation|çeviri|turkish|english|japanese|türkçe|ingilizce|japonca|翻訳)\s*:\s*",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     public string Name => "llm";
 
     public async Task<string?> TranslateAsync(string text, IReadOnlyList<string> context, CancellationToken ct)
     {
-        var toTr = Directions.Normalize(direction) == Directions.EnTr;
-        var src = toTr ? "English" : "Turkish";
-        var dst = toTr ? "Turkish" : "English";
+        var d = Directions.Normalize(direction);
+        var src = Directions.LanguageName(Directions.Source(d));
+        var dst = Directions.LanguageName(Directions.Target(d));
 
         var sb = new StringBuilder();
         sb.Append($"You translate live-stream speech into {dst} subtitles. ");

@@ -4,6 +4,7 @@ using KickTranslator.Config;
 using KickTranslator.Live;
 using KickTranslator.Llm;
 using KickTranslator.Models;
+using KickTranslator.Packs;
 using KickTranslator.Sessions;
 using KickTranslator.Translation;
 using Microsoft.Extensions.Options;
@@ -51,7 +52,8 @@ public static class LocalApi
         app.MapGet("/", () => Results.Redirect("/setup"));
         app.MapGet("/setup", () => Results.Content(SetupPage.Html, "text/html; charset=utf-8"));
 
-        app.MapGet("/health", (WhisperEngine w, TranslatorRegistry tr, ModelDownloader md, SileroVad vad, LlamaServerHost llm) =>
+        app.MapGet("/health", async (WhisperEngine w, TranslatorRegistry tr, ModelDownloader md, SileroVad vad, LlamaServerHost llm,
+                                   LanguagePacks packs) =>
         {
             return Results.Json(new
             {
@@ -70,17 +72,48 @@ public static class LocalApi
                 {
                     enTr = tr.IsLoaded(Directions.EnTr),
                     trEn = tr.IsLoaded(Directions.TrEn),
+                    jaTr = tr.IsLoaded(Directions.JaTr),
+                    trJa = tr.IsLoaded(Directions.TrJa),
                     errors = tr.Errors,
                     llm = new
                     {
                         state = llm.State.ToString().ToLowerInvariant(), // notstarted | downloading | starting | ready | failed
                         error = llm.Error,
                         recommended = w.Plan.Fast,
+                        installed = llm.IsInstalled,
                     },
+                },
+                packs = new
+                {
+                    ja = new { state = packs.State, error = packs.Error, sizeMb = await packs.SizeMbAsync() },
                 },
                 downloads = md.ProgressText,
                 extensionPath = ExtensionPath(),
             });
+        });
+
+        // ---------- İsteğe bağlı dil paketleri (eklenti penceresinden) ----------
+        app.MapPost("/packs/ja/download", (LanguagePacks packs) =>
+        {
+            packs.StartDownload();
+            return Results.Ok(new { ok = true });
+        });
+        app.MapPost("/packs/ja/remove", (LanguagePacks packs) =>
+        {
+            try { packs.Remove(); return Results.Ok(new { ok = true }); }
+            catch (Exception ex) { return Results.Ok(new { ok = false, message = ex.Message }); }
+        });
+
+        // Kaliteli çeviri modeli: sadece kullanıcı isterse iner (~2.5 GB)
+        app.MapPost("/llm/download", (LlamaServerHost llm) =>
+        {
+            _ = llm.EnsureStartedAsync(allowDownload: true);
+            return Results.Ok(new { ok = true });
+        });
+        app.MapPost("/llm/remove", (LlamaServerHost llm) =>
+        {
+            try { llm.Remove(); return Results.Ok(new { ok = true }); }
+            catch (Exception ex) { return Results.Ok(new { ok = false, message = ex.Message }); }
         });
 
         // ---------- Kurulum yardımcıları ----------

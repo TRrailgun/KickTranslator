@@ -3,12 +3,12 @@
 ve dağıtıma hazır zip dosyaları üretir.
 
 Çıktı (dist/models/):
-    opus-mt-en-tr.zip, opus-mt-tr-en.zip, models.json (sha256 + boyut)
+    opus-mt-en-tr.zip, opus-mt-tr-en.zip, opus-mt-ja-tr.zip, opus-mt-en-ja.zip, models.json (sha256 + boyut)
 
 Bu dosyaları Hugging Face, GitHub Releases veya herhangi bir genel adrese yükleyin; uygulama
 ilk açılışta appsettings.json → TranslationModelsBaseUrl adresinden indirir.
 
-Kullanım:  python tools/build_models.py            (her iki yön)
+Kullanım:  python tools/build_models.py            (tüm modeller: en-tr, tr-en, ja-tr, en-ja)
            python tools/build_models.py tr-en      (tek yön)
 
 Gerekli paketler (bir kez):
@@ -27,6 +27,9 @@ from pathlib import Path
 MODELS = {
     "en-tr": "Helsinki-NLP/opus-mt-tc-big-en-tr",
     "tr-en": "Helsinki-NLP/opus-mt-tc-big-tr-en",
+    # İsteğe bağlı Japonca paketi (kullanıcı isterse iner). Türkçe→Japonca: tr-en + en-ja zinciri.
+    "ja-tr": "Helsinki-NLP/opus-mt-ja-tr",
+    "en-ja": "Helsinki-NLP/opus-tatoeba-en-ja",
 }
 REQUIRED = ["encoder_model.onnx", "decoder_model.onnx", "source.spm", "vocab.json", "config.json"]
 # Önbellekli kod çözücü: uygulama varsa kullanır, uzun cümlelerde çeviriyi kat kat hızlandırır

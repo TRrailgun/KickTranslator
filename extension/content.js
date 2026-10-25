@@ -518,7 +518,7 @@
 
   function showBadge(text, isError = false, sticky = false) {
     if (!s.badge) return;
-    const dir = settings.direction === "tr-en" ? "TR→EN" : "EN→TR";
+    const dir = String(settings.direction || "en-tr").toUpperCase().replace("-", "→");
     s.badge.textContent = `${dir} · ${text}`;
     s.badge.classList.toggle("kt-error", isError);
     s.badge.classList.remove("kt-hidden");

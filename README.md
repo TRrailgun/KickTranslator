@@ -3,7 +3,7 @@
 **Kick yayınlarına anlık Türkçe ⇄ İngilizce altyazı.** Ücretsiz ve açık kaynak.
 
 - 🎥 Canlı yayınlarda ve yayın tekrarlarında çalışır
-- 🔁 İngilizce → Türkçe ve Türkçe → İngilizce
+- 🔁 İngilizce ⇄ Türkçe, isteğe bağlı paketle Japonca ⇄ Türkçe
 - 🔒 Her şey sizin bilgisayarınızda çalışır. Ses hiçbir sunucuya gönderilmez, hesap gerekmez.
 - 💻 NVIDIA ekran kartlarında çok hızlı çalışır. APU'lu ve entegre ekran kartlı bilgisayarlarda da çalışır.
 
@@ -44,8 +44,11 @@ Oynatıcının sesi kapalıysa açın; tarayıcı kapalı sesi yakalayamayabilir
 **Altyazı daha erken gelebilir mi?**
 Eklenti simgesinden gecikmeyi **Anlık** yapın. Uygulama cümlenin bitmesini beklemeden, konuşma sürerken yaklaşık her yarım saniyede bir taslak çeviri gösterir (soluk/italik yazı). Cümle bitince kesin çeviri onun yerine geçer. Taslaklar ek işlem gerektirdiği için en iyi sonuç ekran kartlı bilgisayarlarda alınır; bilgisayar yetişemezse taslaklar kendiliğinden kapanır.
 
+**Japonca nasıl kullanılır?**
+Eklenti simgesinden **JA → TR** ya da **TR → JA** seçin. Japonca paketi ilk seferde kendiliğinden inmez; pencerede çıkan **İndir** düğmesine basınca iner, **Kaldır** ile silinir. Japonca için *Kaliteli* çeviri belirgin şekilde daha iyi sonuç verir; *Hızlı* çevirinin Japonca modelleri küçüktür ve Türkçe → Japonca İngilizce üzerinden çevrilir.
+
 **"Hızlı" ve "Kaliteli" çeviri arasındaki fark ne?**
-Eklenti simgesinden seçilir. *Hızlı*, her bilgisayarda çalışan küçük bir çeviri modelidir. *Kaliteli*, bilgisayarınızda çalışan bir yapay zekâ dil modelidir (Gemma 3 4B): konuşma dilini, argoyu ve yarım cümleleri önceki cümlelere bakarak çok daha doğal çevirir. 6 GB ve üstü ekran belleği ister, ilk seçildiğinde yaklaşık 2.5 GB indirilir. *Otomatik*, güçlü ekran kartında Kaliteli'yi, diğerlerinde Hızlı'yı kullanır; Kaliteli çeviri yetişemezse kendiliğinden Hızlı'ya geçer.
+Eklenti simgesinden seçilir. *Hızlı*, her bilgisayarda çalışan küçük bir çeviri modelidir. *Kaliteli*, bilgisayarınızda çalışan bir yapay zekâ dil modelidir (Gemma 3 4B): konuşma dilini, argoyu ve yarım cümleleri önceki cümlelere bakarak çok daha doğal çevirir. 6 GB ve üstü ekran belleği ister. Model (~2.5 GB) kendiliğinden inmez: pencerede çıkan **İndir** düğmesine basınca iner, **Kaldır** ile silinir. *Otomatik*, model indirilmişse ve ekran kartı güçlüyse Kaliteli'yi, diğer durumlarda Hızlı'yı kullanır; Kaliteli çeviri yetişemezse kendiliğinden Hızlı'ya geçer.
 
 **Ekran kartım güçlü ama küçük model kullanılıyor.**
 Uygulama 6 GB ve üstü ekran belleği olan kartları (NVIDIA, Intel Arc, AMD Radeon RX) güçlü sayar. Algılama yanılırsa kurulum klasöründeki `appsettings.json` içinde `"GpuTier": "high"` yapın ve uygulamayı yeniden başlatın.

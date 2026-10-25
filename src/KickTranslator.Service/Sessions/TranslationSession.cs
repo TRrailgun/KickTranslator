@@ -40,6 +40,9 @@ public sealed class TranslationSession
         "thank you.", "thanks for watching!", "thanks for watching.", "thank you for watching.",
         "altyazı m.k.", "izlediğiniz için teşekkürler.", "abone olmayı unutmayın.",
         "you", "bye.", "altyazı", "...",
+        // Japonca: sessizlikte sık uydurulan kapanış cümleleri
+        "ご視聴ありがとうございました", "ご視聴ありがとうございました。", "ご視聴ありがとうございました!",
+        "チャンネル登録をお願いします", "チャンネル登録よろしくお願いします", "おやすみなさい。",
     };
 
     private readonly WebSocket _ws;
@@ -322,7 +325,8 @@ public sealed class TranslationSession
         _log.LogInformation("Canlı oturum: {Dir} · model {Model} · konuşma algılama {Seg} · taslak {Partial}",
             _direction, _whisper.ModelFor(Directions.Source(_direction)), _segmenter.Kind,
             _partialsEnabled ? (_lowLatency ? "açık (düşük gecikme)" : "açık") : "kapalı");
-        _log.LogInformation("Çeviri motoru: istenen {Engine}, kullanılacak {Use}", _engine, WantLlm ? "LLM (hazır olunca)" : "OPUS-MT");
+        _log.LogInformation("Çeviri motoru: istenen {Engine}, kullanılacak {Use}", _engine,
+            !WantLlm ? "OPUS-MT" : _llm.IsInstalled || _llm.IsReady ? "LLM (hazır olunca)" : "OPUS-MT (LLM indirilmemiş)");
         _runCts = new CancellationTokenSource();
         var token = _runCts.Token;
         var reader = _liveQueue.Reader;
@@ -410,7 +414,7 @@ public sealed class TranslationSession
     }
 
     /// <summary>Bitmemiş konuşmayı tek altyazı olarak gönderir; kesinleşen sürüm gelince yerini alır.</summary>
-    private async Task SendPartialAsync(WhisperProcessor processor, MarianTranslator? translator,
+    private async Task SendPartialAsync(WhisperProcessor processor, MarianPipeline? translator,
                                         AudioChunk chunk, CancellationToken ct)
     {
         var swp = Stopwatch.StartNew();
@@ -442,7 +446,7 @@ public sealed class TranslationSession
 
     // ===================== Ortak =====================
 
-    private async Task TranscribeAndSendAsync(WhisperProcessor processor, MarianTranslator? translator,
+    private async Task TranscribeAndSendAsync(WhisperProcessor processor, MarianPipeline? translator,
                                               AudioChunk chunk, bool live, CancellationToken ct)
     {
         if (live)
@@ -524,14 +528,16 @@ public sealed class TranslationSession
         _llmDisabled = false;
         _llmAnnounced = false;
         _llmLatency.Clear();
-        if (WantLlm) _ = _llm.EnsureStartedAsync(); // ilk seferde indirir; hazır olana kadar OPUS-MT kullanılır
+        // Sadece daha önce indirildiyse başlatır; indirme kullanıcı onayıyla (eklentideki "İndir") yapılır.
+        // Hazır olana kadar OPUS-MT kullanılır.
+        if (WantLlm) _ = _llm.EnsureStartedAsync(allowDownload: false);
     }
 
     /// <summary>Kaliteli çeviri isteniyor mu: "llm" seçildiyse ya da otomatikte ekran kartı güçlüyse.</summary>
     private bool WantLlm => _engine == "llm" || (_engine == "auto" && _whisper.Plan.Fast);
 
     /// <summary>Satırı çevirir: LLM hazırsa ve yetişiyorsa LLM, değilse OPUS-MT.</summary>
-    private async Task<(string? Dst, string Engine)> TranslateLineAsync(MarianTranslator? marian, string text, bool live,
+    private async Task<(string? Dst, string Engine)> TranslateLineAsync(MarianPipeline? marian, string text, bool live,
                                                                          CancellationToken ct)
     {
         if (WantLlm && !_llmDisabled && _llm.IsReady)
@@ -586,7 +592,7 @@ public sealed class TranslationSession
     private static bool EndsSentence(string t)
     {
         t = t.TrimEnd();
-        return t.Length > 0 && ".?!…".Contains(t[^1]);
+        return t.Length > 0 && ".?!…。？！".Contains(t[^1]);
     }
 
     /// <summary>Düşük gecikmede taslak daha sık yenilenir.</summary>
@@ -732,13 +738,15 @@ public sealed class TranslationSession
 
     private Task SendMissingTranslatorAsync()
     {
-        var dir = _direction == Directions.TrEn ? "TR→EN" : "EN→TR";
+        var dir = Directions.Label(_direction);
         _translators.Errors.TryGetValue(_direction, out var why);
         _log.LogWarning("{Dir} çeviri modeli yok: {Why}", dir, why);
         return SendAsync(new
         {
             type = "error",
-            message = $"{dir} çeviri modeli yüklenemedi, altyazı çevrilmeden gösteriliyor.",
+            message = Directions.NeedsJapanesePack(_direction) && why != null && why.Contains("paketi")
+                ? $"{dir}: Japonca paketi indirilmemiş. Eklenti simgesinden indirin; o zamana kadar altyazı çevrilmeden gösteriliyor."
+                : $"{dir} çeviri modeli yüklenemedi, altyazı çevrilmeden gösteriliyor.",
         });
     }
 

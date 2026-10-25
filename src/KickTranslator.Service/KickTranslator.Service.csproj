@@ -13,7 +13,7 @@
     <AssemblyName>KickCeviri</AssemblyName>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <Product>Kick Çeviri</Product>
-    <Version>1.5.0</Version>
+    <Version>1.7.0</Version>
     <Company>Kick Çeviri</Company>
   </PropertyGroup>
 
