@@ -8,6 +8,9 @@ public sealed class TranslatorOptions
     /// <summary>auto | cuda | vulkan | cpu</summary>
     public string Device { get; set; } = "auto";
 
+    /// <summary>auto | high | low. Algılama yanılırsa elle: high = büyük model + taslak altyazı.</summary>
+    public string GpuTier { get; set; } = "auto";
+
     /// <summary>Boşsa donanıma ve kaynak dile göre seçilir.</summary>
     public string? WhisperModel { get; set; }
 
@@ -19,7 +22,13 @@ public sealed class TranslatorOptions
     /// <summary>Kurulum klasöründe ffmpeg.exe varsa o kullanılır, yoksa bu değer (PATH).</summary>
     public string FfmpegPath { get; set; } = "ffmpeg";
 
-    public double FirstChunkSeconds { get; set; } = 8;
+    /// <summary>
+    /// Yayın tekrarında sesin çekilebileceği sunucular (https zorunlu). Eklentiden gelen adres bunlardan
+    /// birine ait değilse ffmpeg'e verilmez. Başında nokta olan değer tüm alt alan adlarını kapsar.
+    /// </summary>
+    public string[] AllowedStreamHosts { get; set; } = { "kick.com", ".kick.com", ".cloudfront.net", ".live-video.net" };
+
+    public double FirstChunkSeconds { get; set; } = 4;
     public double ChunkSeconds { get; set; } = 20;
     public double MaxLeadSeconds { get; set; } = 90;
     public int Threads { get; set; } = 0;
@@ -30,7 +39,32 @@ public sealed class TranslatorOptions
     public double LiveMaxSeconds { get; set; } = 6.0;
     /// <summary>Konuşma sürerken taslak altyazı: auto (sadece güçlü GPU) | on | off</summary>
     public string LivePartials { get; set; } = "auto";
+    /// <summary>Konuşma algılama: vad (Silero, önerilir) | energy (eski, ses seviyesine bakar)</summary>
+    public string Segmenter { get; set; } = "vad";
     public double LivePartialIntervalSeconds { get; set; } = 1.0;
+
+    // ---- Çeviri motoru ----
+    /// <summary>auto (güçlü GPU'da LLM, yoksa OPUS-MT) | llm | opus. Eklentiden de seçilebilir.</summary>
+    public string TranslationEngine { get; set; } = "auto";
+    /// <summary>llama.cpp sunucusu (Vulkan derlemesi: NVIDIA, Intel Arc ve AMD'de çalışır).</summary>
+    public string LlmServerUrl { get; set; } =
+        "https://github.com/ggml-org/llama.cpp/releases/download/b11829/llama-b11829-bin-win-vulkan-x64.zip";
+    /// <summary>
+    /// İndirilen sunucu zip'inin beklenen sha256 değeri. Uymazsa dosya silinir ve çalıştırılmaz.
+    /// Adresi değiştirirseniz bunu da güncelleyin (boş = doğrulama yok, önerilmez).
+    /// </summary>
+    public string LlmServerSha256 { get; set; } = "839ff55ce9cbee6a099b403b640ca6b694ee5d74b815e39f77fc5d2b20962f0d";
+    /// <summary>Çeviri için kullanılan dil modeli (GGUF).</summary>
+    public string LlmModelUrl { get; set; } =
+        "https://huggingface.co/unsloth/gemma-3-4b-it-GGUF/resolve/main/gemma-3-4b-it-Q4_K_M.gguf";
+    /// <summary>Dil modeli dosyasının beklenen sha256 değeri (boş = doğrulama yok, önerilmez).</summary>
+    public string LlmModelSha256 { get; set; } = "04a43a22e8d2003deda5acc262f68ec1005fa76c735a9962a8c77042a74a7d19";
+    /// <summary>LLM sunucusunun yerel portu (sadece 127.0.0.1).</summary>
+    public int LlmPort { get; set; } = 5767;
+    /// <summary>Bağlam olarak modele verilen önceki altyazı satırı sayısı.</summary>
+    public int LlmContextLines { get; set; } = 3;
+    /// <summary>Bir çeviri bu süreden uzun sürerse OPUS-MT'ye düşülür.</summary>
+    public double LlmTimeoutSeconds { get; set; } = 2.5;
 
     public string ResolvedDataDir => Environment.ExpandEnvironmentVariables(DataDir);
     public string ModelsDir => Path.Combine(ResolvedDataDir, "models");

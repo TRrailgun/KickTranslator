@@ -32,7 +32,10 @@ public sealed class WhisperEngine : IDisposable
 
         // whisper.cpp yerel kütüphanesi bu sırayla denenir; ilk yüklenebilen kullanılır.
         RuntimeOptions.RuntimeLibraryOrder = Plan.RuntimeOrder.ToList();
-        _log.LogInformation("Donanım: {Desc} ({Device})", Plan.Description, Plan.Device);
+        foreach (var g in HardwareProbe.ListGpus())
+            _log.LogInformation("Ekran kartı: {Name} ({Vendor}, {Vram:0.0} GB)", g.Name, g.Vendor, g.VramGb);
+        _log.LogInformation("Donanım: {Desc} ({Device}) · güçlü mod: {Fast} · İngilizce model: {Model}",
+            Plan.Description, Plan.Device, Plan.Fast ? "evet" : "hayır", ModelFor("en"));
     }
 
     public string ModelFor(string sourceLang) => HardwareProbe.WhisperModelFor(Plan, sourceLang, _opts);

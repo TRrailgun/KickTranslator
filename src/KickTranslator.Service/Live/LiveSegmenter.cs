@@ -7,8 +7,11 @@ namespace KickTranslator.Live;
 /// Parça; en az MinSeconds uzunlukta olup ardından ~240 ms sessizlik gelince,
 /// ya da MaxSeconds'a ulaşınca (en sessiz noktadan) kesilir.
 /// </summary>
-public sealed class LiveSegmenter
+public sealed class LiveSegmenter : ISpeechSegmenter
 {
+    public string Kind => "energy";
+    public double SpeechSeconds { get; private set; }
+
     private const int Sr = HlsAudioReader.SampleRate;
     private const int Frame = Sr * 30 / 1000;      // 30 ms
     private const int SilenceFrames = 8;           // 240 ms
@@ -41,6 +44,7 @@ public sealed class LiveSegmenter
         while ((cut = FindCut()) > 0)
         {
             result.Add(new AudioChunk(_bufStart, _buf.GetRange(0, cut).ToArray()));
+            SpeechSeconds += cut / (double)Sr;
             _buf.RemoveRange(0, cut);
             _bufStart += cut / (double)Sr;
         }

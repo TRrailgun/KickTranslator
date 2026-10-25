@@ -38,6 +38,18 @@ Konuşmanın söylenmesi beklenmeden çevrilemiyor. Konuşma sürerken ekranda s
 **Bilgisayarım yavaş, ne yapabilirim?**
 Uygulama donanımınıza göre model seçer. Entegre ekran kartlarında daha küçük ve hızlı bir model kullanılır. Yine de geride kalırsa yayın tekrarlarında uygulama otomatik olarak ileri atlar.
 
+**Altyazı çıkmıyor, "Videodan ses gelmiyor" yazıyor.**
+Oynatıcının sesi kapalıysa açın; tarayıcı kapalı sesi yakalayamayabilir. Sorun sürerse sayfayı yenileyin ve günlük dosyasıyla hata bildirimi açın.
+
+**Altyazı daha erken gelebilir mi?**
+Eklenti simgesinden gecikmeyi **Anlık** yapın. Uygulama cümlenin bitmesini beklemeden, konuşma sürerken yaklaşık her yarım saniyede bir taslak çeviri gösterir (soluk/italik yazı). Cümle bitince kesin çeviri onun yerine geçer. Taslaklar ek işlem gerektirdiği için en iyi sonuç ekran kartlı bilgisayarlarda alınır; bilgisayar yetişemezse taslaklar kendiliğinden kapanır.
+
+**"Hızlı" ve "Kaliteli" çeviri arasındaki fark ne?**
+Eklenti simgesinden seçilir. *Hızlı*, her bilgisayarda çalışan küçük bir çeviri modelidir. *Kaliteli*, bilgisayarınızda çalışan bir yapay zekâ dil modelidir (Gemma 3 4B): konuşma dilini, argoyu ve yarım cümleleri önceki cümlelere bakarak çok daha doğal çevirir. 6 GB ve üstü ekran belleği ister, ilk seçildiğinde yaklaşık 2.5 GB indirilir. *Otomatik*, güçlü ekran kartında Kaliteli'yi, diğerlerinde Hızlı'yı kullanır; Kaliteli çeviri yetişemezse kendiliğinden Hızlı'ya geçer.
+
+**Ekran kartım güçlü ama küçük model kullanılıyor.**
+Uygulama 6 GB ve üstü ekran belleği olan kartları (NVIDIA, Intel Arc, AMD Radeon RX) güçlü sayar. Algılama yanılırsa kurulum klasöründeki `appsettings.json` içinde `"GpuTier": "high"` yapın ve uygulamayı yeniden başlatın.
+
 **"Kick Çeviri uygulaması çalışmıyor" yazıyor.**
 Başlat menüsünden **Kick Çeviri**'yi açın.
 

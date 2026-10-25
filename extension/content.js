@@ -12,7 +12,7 @@
     "privacy", "subscriptions", "messages", "notifications", "about", "help", "signup", "login",
   ]);
 
-  let settings = { enabled: true, showOriginal: false, fontSize: 26, offset: 0, direction: "en-tr" };
+  let settings = { enabled: true, showOriginal: false, fontSize: 26, offset: 0, direction: "en-tr", engine: "auto", latency: "normal" };
 
   const s = {
     key: null,
@@ -34,7 +34,14 @@
     lastTimeSent: 0,
     listeners: [],
     setupToken: 0,
-    audio: null,         // { ctx, node, src, sink }
+    audio: null,         // { ctx, node, src, sink, stream }
+    audioRetry: null,
+    silentSince: 0,
+    silentWarned: false,
+    dropWarnAt: 0,
+    silenceRestarts: 0,
+    seekTimer: null,
+    seekWaitFrom: null,
   };
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -47,7 +54,7 @@
 
   chrome.storage.onChanged.addListener((ch, area) => {
     if (area !== "sync") return;
-    const needRestart = ("enabled" in ch) || ("direction" in ch);
+    const needRestart = ("enabled" in ch) || ("direction" in ch) || ("engine" in ch) || ("latency" in ch);
     for (const k of Object.keys(ch)) settings[k] = ch[k].newValue;
     applyStyle();
     if (needRestart) restart();
@@ -69,6 +76,15 @@
   setInterval(() => {
     // Oynatıcı yeniden çizildiyse (video öğesi değişti) baştan kur
     if (s.video && !s.video.isConnected) restart();
+
+    // Canlıda seçilen video durmuşken başka bir büyük video oynuyorsa ona geç
+    if (s.mode === "live" && s.video && s.video.paused) {
+      const best = pickVideo();
+      if (best && best !== s.video && !best.paused) {
+        diag("oynayan başka bir video bulundu, ona geçiliyor");
+        restart();
+      }
+    }
 
     const path = location.pathname;
     let key = null, mode = null, id = null;
@@ -100,7 +116,7 @@
     // Video öğesini bekle
     let video = null;
     for (let i = 0; i < 60 && !video; i++) {
-      video = [...document.querySelectorAll("video")].find((v) => v.offsetWidth > 200) || null;
+      video = pickVideo();
       if (!video) await sleep(500);
       if (token !== s.setupToken) return;
     }
@@ -119,6 +135,17 @@
       on(video, "seeking", onSeek);
     }
     connect();
+  }
+
+  // Sayfadaki asıl oynatıcı: görünen en büyük video, oynayan tercih edilir
+  // (önizleme/öne çıkan küçük oynatıcılar seçilmesin).
+  function pickVideo() {
+    const vids = [...document.querySelectorAll("video")]
+      .map((v) => ({ v, area: v.offsetWidth * v.offsetHeight }))
+      .filter((x) => x.v.offsetWidth > 200 && x.area > 0);
+    if (!vids.length) return null;
+    vids.sort((a, b) => (!b.v.paused - !a.v.paused) || (b.area - a.area));
+    return vids[0].v;
   }
 
   async function isChannelLive(slug) {
@@ -155,6 +182,8 @@
   function teardown() {
     s.setupToken++;
     clearTimeout(s.reconnectTimer);
+    clearTimeout(s.seekTimer);
+    s.seekWaitFrom = null;
     clearInterval(s.renderTimer);
     for (const [el, ev, fn, opts] of s.listeners) el.removeEventListener(ev, fn, opts);
     s.listeners = [];
@@ -171,6 +200,7 @@
     s.cues = [];
     s.liveCue = null;
     s.retry = 0;
+    s.silenceRestarts = 0;
   }
 
   function on(el, ev, fn, opts) {
@@ -188,10 +218,11 @@
     ws.onopen = () => {
       s.retry = 0;
       if (s.mode === "vod") {
-        send({ type: "start", url: s.url, position: s.video.currentTime, direction: settings.direction });
+        send({ type: "start", url: s.url, position: s.video.currentTime, direction: settings.direction, engine: settings.engine });
       } else {
-        send({ type: "live-start", direction: settings.direction });
-        startAudio().catch((e) => showBadge("Ses yakalanamadı: " + e.message, true));
+        send({ type: "live-start", direction: settings.direction, engine: settings.engine, latency: settings.latency });
+        diag(`sayfa ${location.pathname}, yön ${settings.direction}`);
+        startAudioWithRetry();
       }
     };
 
@@ -199,6 +230,7 @@
       let m;
       try { m = JSON.parse(e.data); } catch { return; }
       if (m.type === "cue") addCue(m);
+      else if (m.type === "stats") onStats(m);
       else if (m.type === "status") onStatus(m);
       else if (m.type === "error") showBadge(m.message, true);
     };
@@ -224,8 +256,35 @@
     send({ type: "time", position: s.video.currentTime });
   }
 
+  // Zaman çizgisinde sürüklerken onlarca "seeking" olayı gelir; her biri ffmpeg'i yeniden başlatmasın.
+  // Son olaydan 350 ms sonra tek bir "seek" gönder.
   function onSeek() {
-    send({ type: "seek", position: s.video.currentTime });
+    clearTimeout(s.seekTimer);
+    s.seekTimer = setTimeout(() => {
+      if (!s.video) return;
+      const pos = s.video.currentTime;
+      if (!hasCueNear(pos)) {
+        s.seekWaitFrom = pos;
+        showBadge("Konuşma yakalanıyor...", false, true);
+      }
+      send({ type: "seek", position: pos });
+    }, 350);
+  }
+
+  function hasCueNear(t) {
+    return s.cues.some((c) => c.start >= t - 2 && c.start <= t + 8);
+  }
+
+  function diag(message) {
+    send({ type: "diag", message });
+  }
+
+  function onStats(m) {
+    // Donanım yetişemediği için parça atıldıysa kullanıcı bilsin (en fazla dakikada bir)
+    if (m.dropped > 0 && Date.now() - s.dropWarnAt > 60000) {
+      s.dropWarnAt = Date.now();
+      showBadge("Bilgisayar yetişemiyor, bazı cümleler atlandı");
+    }
   }
 
   function onStatus(m) {
@@ -235,6 +294,30 @@
   }
 
   // ---------- Canlı yayın: ses yakalama ----------
+  // Ses yakalanamazsa vazgeçme: oynatma başlayınca / akış değişince tekrar dene
+  function startAudioWithRetry() {
+    clearTimeout(s.audioRetry);
+    const token = s.setupToken;
+    startAudio().catch((e) => {
+      if (token !== s.setupToken) return;
+      showBadge("Ses yakalanamadı: " + e.message + " (tekrar deneniyor)", true);
+      diag("ses yakalanamadı: " + e.message);
+      s.audioRetry = setTimeout(() => {
+        if (token === s.setupToken && s.ws?.readyState === WebSocket.OPEN) startAudioWithRetry();
+      }, 3000);
+    });
+  }
+
+  // Oynatıcı akışı değiştirince (kalite değişimi, yayın yeniden bağlanması) eski ses izi biter;
+  // yakalamayı yeni izle baştan kur.
+  function restartAudio(reason) {
+    if (!s.audio) return;
+    diag("ses izi değişti (" + reason + "), yakalama yeniden kuruluyor");
+    stopAudio();
+    clearTimeout(s.audioRetry);
+    s.audioRetry = setTimeout(startAudioWithRetry, 300);
+  }
+
   async function startAudio() {
     if (s.audio || !s.video) return;
     const video = s.video;
@@ -244,6 +327,7 @@
     // Ses izi oynatma başlayınca gelir
     for (let i = 0; i < 40 && stream.getAudioTracks().length === 0; i++) await sleep(250);
     if (stream.getAudioTracks().length === 0) throw new Error("videoda ses izi yok");
+    if (s.audio || video !== s.video) return;
 
     const ctx = new AudioContext();
     const src = ctx.createMediaStreamSource(stream);
@@ -275,7 +359,18 @@
     }
     src.connect(node);
     node.connect(sink);
-    s.audio = { ctx, node, src, sink };
+    s.audio = { ctx, node, src, sink, stream };
+    s.silentSince = 0;
+    s.silentWarned = false;
+
+    const track = stream.getAudioTracks()[0];
+    const mine = () => s.audio?.stream === stream; // eski akışların olayları yenisini bozmasın
+    track.addEventListener("ended", () => mine() && restartAudio("iz bitti"));
+    stream.addEventListener("removetrack", () => mine() && restartAudio("iz kaldırıldı"));
+    stream.addEventListener("addtrack", () => mine() && restartAudio("yeni iz"));
+    diag(`ses yakalama başladı: ${ctx.sampleRate} Hz, iz sayısı ${stream.getAudioTracks().length}, ` +
+         `video ${video.videoWidth}x${video.videoHeight}, sessiz=${video.muted}, ses=${video.volume.toFixed(2)}, ` +
+         `yöntem=${node instanceof AudioWorkletNode ? "worklet" : "scriptprocessor"}`);
 
     if (ctx.state !== "running") {
       ctx.resume().catch(() => {});
@@ -287,6 +382,7 @@
   }
 
   function stopAudio() {
+    clearTimeout(s.audioRetry);
     const a = s.audio;
     s.audio = null;
     if (!a) return;
@@ -297,11 +393,38 @@
   function onPcm(samples) {
     const v = s.video;
     if (!v || v.paused || !s.ws || s.ws.readyState !== WebSocket.OPEN || !samples.length) return;
+    checkSilence(v, samples);
     const start = v.currentTime - samples.length / 16000;
     const buf = new ArrayBuffer(8 + samples.length * 4);
     new DataView(buf).setFloat64(0, start, true);
     new Float32Array(buf, 8).set(samples);
     s.ws.send(buf);
+  }
+
+  // Oynarken saniyelerce tamamen sıfır ses geliyorsa yakalama çalışmıyordur: kullanıcıya ve günlüğe bildir
+  function checkSilence(v, samples) {
+    let peak = 0;
+    for (let i = 0; i < samples.length; i++) {
+      const a = Math.abs(samples[i]);
+      if (a > peak) peak = a;
+    }
+    const now = performance.now();
+    if (peak > 0.0001) {
+      if (s.silentWarned) diag("ses gelmeye başladı");
+      s.silentSince = 0;
+      s.silentWarned = false;
+      return;
+    }
+    if (!s.silentSince) s.silentSince = now;
+    if (!s.silentWarned && now - s.silentSince > 8000) {
+      s.silentWarned = true;
+      const muted = v.muted || v.volume === 0;
+      showBadge(muted
+        ? "Videodan ses gelmiyor: oynatıcının sesi kapalı, sesi açıp deneyin"
+        : "Videodan ses gelmiyor (8 sn tamamen sessiz)", true);
+      diag(`8 sn tamamen sessiz ses (sessiz=${v.muted}, ses=${v.volume.toFixed(2)})`);
+      if (!muted && s.silenceRestarts++ < 2) restartAudio("sessizlik");
+    }
   }
 
   // ---------- Altyazılar ----------
@@ -314,6 +437,11 @@
       s.liveUntil = performance.now() + (c.partial ? 4000 : Math.min(8000, Math.max(2500, dur + 1500)));
       render();
       return;
+    }
+    // Sarma sonrası ilk altyazı geldiyse "yakalanıyor" rozetini kaldır
+    if (s.seekWaitFrom != null && c.start >= s.seekWaitFrom - 2) {
+      s.seekWaitFrom = null;
+      s.badge?.classList.add("kt-hidden");
     }
     const dur = Math.max(0.2, c.end - c.start);
     // Yeniden işlenen bölgeden gelen çakışan eski altyazıları at

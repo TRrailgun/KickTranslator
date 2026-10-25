@@ -144,11 +144,16 @@ Bu bağlantı her zaman en son sürüme gider. Depo ana sayfası (README) zaten 
 
 **Eklenti dosyaları değiştiyse** sürüm notuna şunu ekleyin: *"Güncelledikten sonra `chrome://extensions` sayfasında Kick Çeviri'nin ↻ simgesine basın."* Kurulum dosyaları yeniler, ama Chrome eklentiyi kendiliğinden yeniden yüklemez.
 
-**Modelleri değiştirirseniz:** Yeni bir `modeller-v2` sürümü açın (yine pre-release olarak). `appsettings.json` içindeki adresi `modeller-v2` yapın. `modeller-v1`'i silmeyin, eski sürümü kullananlar hâlâ ona ihtiyaç duyar.
+**Modelleri değiştirirseniz:** Yeni bir `modeller-v2` sürümü açın (yine pre-release olarak), yeni 3 dosyayı yükleyin ve `appsettings.json` içindeki adresi `modeller-v2` yapın. `modeller-v1`'i silmeyin, eski sürümü kullananlar hâlâ ona ihtiyaç duyar. Yeni sürümü kuran kullanıcıların uygulaması, `models.json` içindeki sha256 değişmişse yeni modeli arka planda kendiliğinden indirir ve bir sonraki açılışta kullanır.
+
+**Disk temizliği:** Uygulama her açılışta kullanılmayan dosyaları kendiliğinden siler: yarım kalmış indirmeler, artık kullanılmayan konuşma tanıma modelleri (ör. donanım değiştiyse), eski LLM modeli ve sunucu sürümleri. Ek bir şey yapmanız gerekmez.
 
 ---
 
 ## Bilinmesi iyi olanlar
+
+- **Güvenlik önlemleri:** Yerel servis sadece bu bilgisayardan, sadece kendi eklentisinden (kimliği `manifest.json` içindeki `key` ile sabit) ve şifreli (https) site sayfalarından gelen bağlantıları kabul eder. LLM sunucusu her açılışta yeni bir erişim anahtarıyla başlar ve uygulama kapanınca Windows tarafından kapatılır. İndirilen program ve modellerin sha256 değerleri kodda sabittir; uymayan dosya kullanılmaz. LLM sunucusunun ya da modelin adresini `appsettings.json`'da değiştirirseniz `LlmServerSha256` / `LlmModelSha256` değerlerini de güncelleyin (değer, GitHub sürüm sayfasında dosyanın yanında, Hugging Face'te dosya sayfasında yazar).
+- **Eklenti kimliği:** `manifest.json` içindeki `key` alanını silmeyin ya da değiştirmeyin; servis sadece bu kimlikteki eklentiyle konuşur.
 
 - **SmartScreen uyarısı:** İmzasız dosyalarda Windows ilk başta uyarı gösterir. README ve sürüm notları kullanıcıya nasıl geçileceğini anlatıyor. Ücretsiz bir seçenek olarak açık kaynak projelere kod imzalama hizmeti veren **SignPath Foundation**'a başvurabilirsiniz. Onaylanırsa uyarı zamanla kalkar.
 - **Antivirüs yanlış alarmı:** Az indirilen yeni programlar bazen işaretlenebilir. Olursa dosyayı Microsoft'a "yanlış pozitif" olarak bildirebilirsiniz: Microsoft Security Intelligence → *Submit a file*.

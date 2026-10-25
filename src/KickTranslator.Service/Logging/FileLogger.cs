@@ -48,6 +48,12 @@ public sealed class FileLoggerProvider : ILoggerProvider
 
     public void Dispose() => _queue.CompleteAdding();
 
+    // Günlükler herkese açık hata bildirimlerine eklenebilir: Windows kullanıcı adı görünmesin
+    private static readonly string Profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+    internal static string Redact(string line) =>
+        Profile.Length > 3 ? line.Replace(Profile, "%USERPROFILE%", StringComparison.OrdinalIgnoreCase) : line;
+
     private sealed class FileLogger(FileLoggerProvider owner, string category) : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
@@ -60,7 +66,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
             var cat = category[(category.LastIndexOf('.') + 1)..];
             var line = $"{DateTime.Now:HH:mm:ss} [{logLevel.ToString()[..4]}] {cat}: {formatter(state, exception)}";
             if (exception != null) line += Environment.NewLine + exception;
-            owner.Enqueue(line);
+            owner.Enqueue(Redact(line));
         }
     }
 }

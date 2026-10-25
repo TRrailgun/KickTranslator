@@ -1,7 +1,10 @@
 using System.Diagnostics;
 using System.Globalization;
+using Microsoft.Extensions.Options;
 using KickTranslator.Asr;
 using KickTranslator.Config;
+using KickTranslator.Live;
+using KickTranslator.Llm;
 using KickTranslator.Logging;
 using KickTranslator.Models;
 using KickTranslator.Translation;
@@ -52,6 +55,8 @@ internal static class Program
         builder.Services.AddSingleton<ModelDownloader>();
         builder.Services.AddSingleton<WhisperEngine>();
         builder.Services.AddSingleton<TranslatorRegistry>();
+        builder.Services.AddSingleton<SileroVad>();
+        builder.Services.AddSingleton<LlamaServerHost>();
         builder.Services.AddHostedService<Warmup>();
 
         builder.WebHost.UseUrls(opts.Listen);
@@ -79,6 +84,8 @@ internal static class Program
             Application.Run(tray);
 
         app.StopAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+        // LLM sunucusu ayrı bir işlem: uygulamayla birlikte kapansın
+        app.Services.GetRequiredService<LlamaServerHost>().Dispose();
         return 0;
     }
 
@@ -95,14 +102,29 @@ internal static class AppInfo
         typeof(AppInfo).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
 }
 
-/// <summary>Açılışta modelleri arka planda hazırlar ki ilk video beklemesin.</summary>
-internal sealed class Warmup(WhisperEngine whisper, TranslatorRegistry translators) : BackgroundService
+/// <summary>
+/// Açılışta: kullanılmayan model dosyalarını temizler, modelleri arka planda hazırlar ki ilk video
+/// beklemesin, sonra yayınlanmış yeni çeviri modeli var mı diye bakar.
+/// </summary>
+internal sealed class Warmup(WhisperEngine whisper, TranslatorRegistry translators, SileroVad vad,
+                             ModelDownloader models, IOptions<TranslatorOptions> opts) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        _ = vad.Available; // VAD modelini açılışta yükle
+
+        // Bu donanımın kullandığı modeller kalır; başkaları (eski sürüm, eski donanım) silinir
+        var o = opts.Value;
+        var gguf = Uri.TryCreate(o.LlmModelUrl, UriKind.Absolute, out var u) ? Path.GetFileName(u.AbsolutePath) : "";
+        await Task.Run(() => models.Cleanup(new[] { whisper.ModelFor("en"), whisper.ModelFor("tr"), o.WhisperModel ?? "", gguf }),
+                       stoppingToken);
+
         await Task.Delay(1500, stoppingToken);
         await Task.WhenAll(
             whisper.WarmupAsync("en", stoppingToken),
             translators.GetAsync(Directions.EnTr, stoppingToken));
+
+        await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+        await models.CheckMarianUpdatesAsync(stoppingToken);
     }
 }

@@ -13,6 +13,7 @@
     label.row { display: flex; align-items: center; justify-content: space-between; margin: 6px 0; gap: 8px; }
     .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: #0d0e10; border-radius: 8px; padding: 3px; margin-bottom: 6px; }
     .seg button { background: transparent; color: var(--muted); border: 0; border-radius: 6px; padding: 6px; font: inherit; font-weight: 600; cursor: pointer; }
+    .seg.seg3 { grid-template-columns: 1fr 1fr 1fr; }
     .seg button.on { background: var(--green); color: #000; }
     input[type="number"], input[type="email"], input[type="text"] { background: #0d0e10; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit; }
     input[type="number"] { width: 64px; }
@@ -38,10 +39,21 @@
       <button data-v="en-tr">EN → TR</button>
       <button data-v="tr-en">TR → EN</button>
     </div>
+    <p class="title" style="margin-top:10px">Çeviri kalitesi</p>
+    <div class="seg seg3" id="engine">
+      <button data-v="auto" title="Güçlü ekran kartında kaliteli, diğerlerinde hızlı">Otomatik</button>
+      <button data-v="opus" title="Küçük çeviri modeli: her bilgisayarda hızlı">Hızlı</button>
+      <button data-v="llm" title="Yapay zekâ dil modeli: daha doğal çeviri, güçlü ekran kartı ister (~2.5 GB indirme)">Kaliteli</button>
+    </div>
+    <p class="title" style="margin-top:10px">Canlı yayın gecikmesi</p>
+    <div class="seg" id="latency">
+      <button data-v="normal" title="Cümle bitince çevirir: daha doğru">Normal</button>
+      <button data-v="low" title="Konuşma sürerken çevirir: daha hızlı, cümle bitince düzeltilir">Anlık</button>
+    </div>
     <label class="row">Altyazı açık <input type="checkbox" id="enabled" /></label>
     <label class="row">Orijinal metni de göster <input type="checkbox" id="showOriginal" /></label>
     <label class="row">Yazı boyutu <input type="range" id="fontSize" min="16" max="44" step="1" /></label>
-    <label class="row">Gecikme (sn, tekrarlarda) <input type="number" id="offset" step="0.1" /></label>
+    <label class="row">Altyazı kaydırma (sn, tekrarlarda) <input type="number" id="offset" step="0.1" /></label>
   </div>
 
   <div class="card">

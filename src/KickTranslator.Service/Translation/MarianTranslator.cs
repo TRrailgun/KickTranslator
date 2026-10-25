@@ -18,6 +18,9 @@ public sealed class MarianTranslator : IDisposable
 {
     private readonly InferenceSession _encoder;
     private readonly InferenceSession _decoder;
+    // İsteğe bağlı: önbellekli kod çözücü (decoder_with_past_model.onnx). Varsa her adımda sadece
+    // son kelime işlenir; uzun cümlelerde çeviri kat kat hızlanır.
+    private InferenceSession? _decoderPast;
     private readonly SentencePieceTokenizer _spm;
     private readonly Dictionary<string, int> _vocab;
     private readonly string[] _idToToken;
@@ -42,6 +45,12 @@ public sealed class MarianTranslator : IDisposable
         };
         _encoder = new InferenceSession(F("encoder_model.onnx"), so);
         _decoder = new InferenceSession(F("decoder_model.onnx"), so);
+        var pastPath = Path.Combine(dir, "decoder_with_past_model.onnx");
+        if (File.Exists(pastPath) && _decoder.OutputMetadata.Keys.Any(k => k.StartsWith("present.")))
+        {
+            try { _decoderPast = new InferenceSession(pastPath, so); }
+            catch { _decoderPast = null; }
+        }
 
         if (!_decoder.InputMetadata.ContainsKey("encoder_hidden_states"))
             throw new InvalidOperationException("decoder_model.onnx beklenen girdileri içermiyor; modeli build_models.py ile yeniden üretin.");
@@ -107,35 +116,20 @@ public sealed class MarianTranslator : IDisposable
         }
 
         // 3) Kod çözücü (decoder) ile açgözlü (greedy) üretim.
-        var output = new List<long> { _decoderStart };
-        var maxNew = Math.Min(256, n * 3 + 10);
-        for (var step = 0; step < maxNew; step++)
+        var maxNew = Math.Min(256, n * 2 + 10);
+        List<long> output;
+        if (_decoderPast != null)
         {
-            var decIds = new DenseTensor<long>(output.ToArray(), new[] { 1, output.Count });
-            using var res = _decoder.Run(
-                new[]
-                {
-                    NamedOnnxValue.CreateFromTensor("input_ids", decIds),
-                    NamedOnnxValue.CreateFromTensor("encoder_hidden_states", hidden),
-                    NamedOnnxValue.CreateFromTensor("encoder_attention_mask", mask),
-                },
-                new[] { "logits" });
-
-            var logits = res.First().AsTensor<float>().ToDenseTensor();
-            var vocabSize = logits.Dimensions[2];
-            var row = logits.Buffer.Span.Slice((output.Count - 1) * vocabSize, vocabSize);
-
-            var best = -1;
-            var bestVal = float.NegativeInfinity;
-            for (var v = 0; v < vocabSize; v++)
+            try { output = DecodeWithPast(hidden, mask, maxNew); }
+            catch
             {
-                if (v == _pad) continue;
-                if (row[v] > bestVal) { bestVal = row[v]; best = v; }
+                // Model beklenen biçimde değilse yavaş yola kalıcı olarak geç
+                _decoderPast.Dispose();
+                _decoderPast = null;
+                output = DecodeFull(hidden, mask, maxNew);
             }
-
-            if (best == _eos || best < 0) break;
-            output.Add(best);
         }
+        else output = DecodeFull(hidden, mask, maxNew);
 
         // 4) Parçaları birleştir.
         var sb = new StringBuilder();
@@ -148,8 +142,105 @@ public sealed class MarianTranslator : IDisposable
         return sb.ToString().Replace('▁', ' ').Trim();
     }
 
+    /// <summary>Önbelleksiz: her adımda tüm çıktı yeniden işlenir (eski model paketleri).</summary>
+    private List<long> DecodeFull(DenseTensor<float> hidden, DenseTensor<long> mask, int maxNew)
+    {
+        var output = new List<long> { _decoderStart };
+        for (var step = 0; step < maxNew; step++)
+        {
+            var decIds = new DenseTensor<long>(output.ToArray(), new[] { 1, output.Count });
+            using var res = _decoder.Run(
+                new[]
+                {
+                    NamedOnnxValue.CreateFromTensor("input_ids", decIds),
+                    NamedOnnxValue.CreateFromTensor("encoder_hidden_states", hidden),
+                    NamedOnnxValue.CreateFromTensor("encoder_attention_mask", mask),
+                },
+                new[] { "logits" });
+
+            var best = ArgMaxLast(res.First().AsTensor<float>());
+            if (best == _eos || best < 0) break;
+            output.Add(best);
+        }
+        return output;
+    }
+
+    /// <summary>Önbellekli: ilk adım decoder_model, sonrakiler decoder_with_past_model ile sadece son kelime.</summary>
+    private List<long> DecodeWithPast(DenseTensor<float> hidden, DenseTensor<long> mask, int maxNew)
+    {
+        var output = new List<long> { _decoderStart };
+        var past = new Dictionary<string, DenseTensor<float>>();
+
+        // İlk adım: tüm önbellek (kod çözücü + kodlayıcı) üretilir
+        using (var res = _decoder.Run(new[]
+               {
+                   NamedOnnxValue.CreateFromTensor("input_ids", new DenseTensor<long>(new long[] { _decoderStart }, new[] { 1, 1 })),
+                   NamedOnnxValue.CreateFromTensor("encoder_hidden_states", hidden),
+                   NamedOnnxValue.CreateFromTensor("encoder_attention_mask", mask),
+               }))
+        {
+            long best = -1;
+            foreach (var r in res)
+            {
+                if (r.Name == "logits") best = ArgMaxLast(r.AsTensor<float>());
+                else if (r.Name.StartsWith("present."))
+                    past["past_key_values." + r.Name["present.".Length..]] = r.AsTensor<float>().ToDenseTensor();
+            }
+            if (best == _eos || best < 0) return output;
+            output.Add(best);
+        }
+
+        var pastNames = _decoderPast!.InputMetadata.Keys.Where(k => k.StartsWith("past_key_values.")).ToList();
+        for (var step = 1; step < maxNew; step++)
+        {
+            var inputs = new List<NamedOnnxValue>
+            {
+                NamedOnnxValue.CreateFromTensor("input_ids", new DenseTensor<long>(new long[] { output[^1] }, new[] { 1, 1 })),
+                NamedOnnxValue.CreateFromTensor("encoder_attention_mask", mask),
+            };
+            if (_decoderPast.InputMetadata.ContainsKey("encoder_hidden_states"))
+                inputs.Add(NamedOnnxValue.CreateFromTensor("encoder_hidden_states", hidden));
+            foreach (var name in pastNames)
+                inputs.Add(NamedOnnxValue.CreateFromTensor(name, past[name]));
+
+            long best = -1;
+            using (var res = _decoderPast.Run(inputs))
+            {
+                foreach (var r in res)
+                {
+                    if (r.Name == "logits") best = ArgMaxLast(r.AsTensor<float>());
+                    else if (r.Name.StartsWith("present.")) // sadece kod çözücü önbelleği güncellenir
+                        past["past_key_values." + r.Name["present.".Length..]] = r.AsTensor<float>().ToDenseTensor();
+                }
+            }
+            if (best == _eos || best < 0) break;
+            output.Add(best);
+        }
+        return output;
+    }
+
+    /// <summary>Son konumdaki en olası kelime (logits kopyalanmadan okunur).</summary>
+    private int ArgMaxLast(Tensor<float> logits)
+    {
+        var seq = logits.Dimensions[1];
+        var vocabSize = logits.Dimensions[2];
+        ReadOnlySpan<float> row = logits is DenseTensor<float> dt
+            ? dt.Buffer.Span.Slice((seq - 1) * vocabSize, vocabSize)
+            : logits.ToDenseTensor().Buffer.Span.Slice((seq - 1) * vocabSize, vocabSize);
+
+        var best = -1;
+        var bestVal = float.NegativeInfinity;
+        for (var v = 0; v < vocabSize; v++)
+        {
+            if (v == _pad) continue;
+            if (row[v] > bestVal) { bestVal = row[v]; best = v; }
+        }
+        return best;
+    }
+
     public void Dispose()
     {
+        _decoderPast?.Dispose();
         _encoder.Dispose();
         _decoder.Dispose();
     }

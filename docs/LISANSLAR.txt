@@ -14,6 +14,14 @@ Whisper.net — Sandro Hanea (MIT Lisansı)
   https://huggingface.co/Helsinki-NLP
   Modeller int8 sıkıştırılmış ve ONNX biçimine dönüştürülmüştür.
 
+Konuşma algılama: Silero VAD v5 — Silero Team (MIT Lisansı)
+  https://github.com/snakers4/silero-vad
+
+Kaliteli çeviri (isteğe bağlı, ilk kullanımda indirilir):
+  llama.cpp — ggml-org ve katkıcılar (MIT Lisansı), https://github.com/ggml-org/llama.cpp
+  Gemma 3 4B (Google) — Gemma Kullanım Koşullarına tabidir: https://ai.google.dev/gemma/terms
+  GGUF dönüşümü: Unsloth, https://huggingface.co/unsloth/gemma-3-4b-it-GGUF
+
 ONNX Runtime — Microsoft (MIT Lisansı)
 Microsoft.ML.Tokenizers — Microsoft (MIT Lisansı)
 .NET — Microsoft (MIT Lisansı)

@@ -7,6 +7,7 @@ namespace KickTranslator.Audio;
 
 public sealed record AudioChunk(double Start, float[] Samples)
 {
+    public const int SampleRate = 16000;
     public double Duration => Samples.Length / (double)HlsAudioReader.SampleRate;
 }
 
@@ -40,6 +41,10 @@ public static class HlsAudioReader
             "-hide_banner", "-loglevel", "error",
             "-headers", "Referer: https://kick.com/\r\nOrigin: https://kick.com\r\n",
             "-user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
+            // Sadece ağ üzerinden HLS: file:, concat:, pipe: gibi yerel dosya okuyabilen protokoller kapalı
+            "-protocol_whitelist", "https,tls,tcp,crypto",
+            // Akışı tanımak için az veri oku: sarma sonrası ilk altyazı daha erken gelsin
+            "-analyzeduration", "1000000", "-probesize", "1000000",
             "-ss", startPosition.ToString("0.###", CultureInfo.InvariantCulture),
             "-i", url,
             "-vn", "-ac", "1", "-ar", SampleRate.ToString(CultureInfo.InvariantCulture),
@@ -78,7 +83,7 @@ public static class HlsAudioReader
         var rawFilled = 0;
         var pending = new List<float>(SampleRate * 40);
         var position = startPosition;
-        var first = true;
+        var chunkIndex = 0;
         var anyData = false;
 
         while (true)
@@ -101,7 +106,11 @@ public static class HlsAudioReader
             if (rest > 0) Buffer.BlockCopy(raw, usable, raw, 0, rest);
             rawFilled = rest;
 
-            var target = (int)((first ? firstChunkSeconds : chunkSeconds) * SampleRate);
+            // Kademeli parça boyu: ilk parça kısa (hızlı başlangıç), sonra 2 katı, sonra normal boy
+            int Target(int i) => (int)((i == 0 ? firstChunkSeconds
+                                        : i == 1 ? Math.Min(chunkSeconds, firstChunkSeconds * 2)
+                                        : chunkSeconds) * SampleRate);
+            var target = Target(chunkIndex);
             while (pending.Count >= target)
             {
                 var cut = FindQuietCut(CollectionsMarshal.AsSpan(pending), target);
@@ -110,8 +119,8 @@ public static class HlsAudioReader
 
                 yield return new AudioChunk(position, samples);
                 position += cut / (double)SampleRate;
-                first = false;
-                target = (int)(chunkSeconds * SampleRate);
+                chunkIndex++;
+                target = Target(chunkIndex);
             }
         }
 
